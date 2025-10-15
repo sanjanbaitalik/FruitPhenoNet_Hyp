@@ -1,0 +1,72 @@
+================================================================================
+YOLO MODEL EVALUATION REPORT
+FruitPhenoNet - Bell Pepper Detection
+================================================================================
+
+Report Generated: 2025-10-15 20:35:05
+Model: C:\Users\user\Desktop\Sanjan\FruitPhenoNet_Hyp\FruitPhenoNet_Hyp\runs\train\weights\best.pt
+Dataset: C:\Users\user\Desktop\Sanjan\FruitPhenoNet_Hyp\FruitPhenoNet_Hyp\yolo_dataset\data.yaml
+
+--------------------------------------------------------------------------------
+OVERALL METRICS
+--------------------------------------------------------------------------------
+
+mAP@0.5:       0.8489 (84.89%)
+mAP@0.5:0.95:  0.3637 (36.37%)
+Precision:     0.8409 (84.09%)
+Recall:        0.8344 (83.44%)
+F1 Score:      0.8377 (83.77%)
+
+--------------------------------------------------------------------------------
+METRIC DEFINITIONS
+--------------------------------------------------------------------------------
+
+mAP (Mean Average Precision):
+  - mAP@0.5: Average precision at IoU threshold of 0.5
+  - mAP@0.5:0.95: Average precision across IoU thresholds from 0.5 to 0.95
+  - Higher is better (closer to 1.0 or 100%)
+
+Precision:
+  - Ratio of correct positive predictions to total positive predictions
+  - Answers: 'Of all detections, how many were correct?'
+  - Higher precision = fewer false positives
+
+Recall:
+  - Ratio of correct positive predictions to all actual positives
+  - Answers: 'Of all ground truth objects, how many were detected?'
+  - Higher recall = fewer missed detections
+
+F1 Score:
+  - Harmonic mean of precision and recall
+  - Balances both metrics (useful when both are important)
+
+--------------------------------------------------------------------------------
+CLASSES
+--------------------------------------------------------------------------------
+  Class 0: bell-pepper(fooled_you)
+  Class 1: bell-pepper(numex)
+
+--------------------------------------------------------------------------------
+MODEL PERFORMANCE SUMMARY
+--------------------------------------------------------------------------------
+
+Overall Performance: Good
+
+The model achieved a mAP@0.5 of 84.89%, which is considered
+good for object detection tasks.
+
+The model has higher precision than recall, meaning it's conservative
+in making predictions (fewer false positives, but may miss some objects).
+
+--------------------------------------------------------------------------------
+TRAINING ARTIFACTS
+--------------------------------------------------------------------------------
+
+Confusion Matrix: C:\Users\user\Desktop\Sanjan\FruitPhenoNet_Hyp\FruitPhenoNet_Hyp\runs\train\confusion_matrix.png
+Results Plot:     C:\Users\user\Desktop\Sanjan\FruitPhenoNet_Hyp\FruitPhenoNet_Hyp\runs\train\results.png
+PR Curve:         C:\Users\user\Desktop\Sanjan\FruitPhenoNet_Hyp\FruitPhenoNet_Hyp\runs\train\PR_curve.png
+F1 Curve:         C:\Users\user\Desktop\Sanjan\FruitPhenoNet_Hyp\FruitPhenoNet_Hyp\runs\train\F1_curve.png
+
+================================================================================
+END OF REPORT
+================================================================================

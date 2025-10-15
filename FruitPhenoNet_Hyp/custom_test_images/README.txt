@@ -17,7 +17,7 @@ Place your test images here for model testing.
 
 ## Example
 
-```
+```xxxxxxxxxxxxxxx
 custom_test_images/
   ├── test_image_1.jpg
   ├── test_image_2.jpg

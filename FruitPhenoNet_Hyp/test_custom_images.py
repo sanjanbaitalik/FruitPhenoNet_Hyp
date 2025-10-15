@@ -82,6 +82,8 @@ def test_custom_images(image_paths=None, confidence_threshold=0.25):
     
     # Process each image
     results_summary = []
+    # Map of single-key -> class name for this test session (written to legend file)
+    session_label_map = {}
     
     for idx, image_path in enumerate(test_images, 1):
         print(f"  Processing {idx}/{len(test_images)}: {image_path.name}")
@@ -98,8 +100,75 @@ def test_custom_images(image_paths=None, confidence_threshold=0.25):
         result = results[0]
         detections = len(result.boxes)
         
-        # Save annotated image
-        annotated_img = result.plot()
+        # Load original image (we'll draw our own compact labels)
+        img = cv2.imread(str(image_path))
+        if img is None:
+            print(f"    ❌ Could not read image: {image_path}")
+            continue
+
+        # If there are detections, draw boxes and short single-key labels
+        if detections > 0:
+            # Extract boxes, classes and confidences
+            try:
+                boxes = result.boxes.xyxy.cpu().numpy()
+            except Exception:
+                # Fallback if attribute naming differs
+                boxes = result.boxes.xyxy.numpy()
+
+            classes = result.boxes.cls.cpu().numpy().astype(int)
+            confidences = result.boxes.conf.cpu().numpy()
+
+            # Helper to pick a single-character key for a class index
+            def key_for_index(i: int) -> str:
+                # 0-9 -> '0'..'9', 10-35 -> 'A'..'Z', otherwise '*'
+                if 0 <= i <= 9:
+                    return str(i)
+                i2 = i - 10
+                if 0 <= i2 < 26:
+                    return chr(ord('A') + i2)
+                return '*'
+
+            # Drawing parameters
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            img_h, img_w = img.shape[:2]
+            # scale font relative to image size
+            font_scale = max(0.4, min(img_w, img_h) / 800.0)
+            thickness = max(1, int(round(min(img_w, img_h) / 500.0)))
+            pad = int(max(4, min(img_w, img_h) / 200.0))
+
+            for (x1, y1, x2, y2), cls, conf in zip(boxes, classes, confidences):
+                x1i, y1i, x2i, y2i = int(x1), int(y1), int(x2), int(y2)
+
+                # key and legend
+                key = key_for_index(int(cls))
+                session_label_map.setdefault(key, model.names[int(cls)])
+
+                # box color (use a consistent color per class index)
+                color = tuple(int(c) for c in np.array(((int(cls) * 37) % 255, (int(cls) * 97) % 255, (int(cls) * 59) % 255))[::-1])
+
+                # draw rectangle
+                cv2.rectangle(img, (x1i, y1i), (x2i, y2i), color, thickness)
+
+                # draw small filled rectangle for key background
+                text = str(key)
+                (text_w, text_h), _ = cv2.getTextSize(text, font, font_scale, thickness)
+                # Position the label at the top-left of the box, inside image bounds
+                tx1 = max(0, x1i)
+                ty1 = max(text_h + pad, y1i)
+                bg_tl = (tx1, ty1 - text_h - pad // 2)
+                bg_br = (tx1 + text_w + pad, ty1 + pad // 2)
+                cv2.rectangle(img, bg_tl, bg_br, color, -1)
+                # text color: use black or white depending on bg brightness
+                b, g, r = color
+                brightness = (0.299 * r + 0.587 * g + 0.114 * b)
+                text_color = (0, 0, 0) if brightness > 127 else (255, 255, 255)
+                cv2.putText(img, text, (tx1 + pad // 2, ty1), font, font_scale, text_color, thickness, cv2.LINE_AA)
+
+            annotated_img = img
+        else:
+            # No detections: save the original image unchanged
+            annotated_img = img
+
         output_path = session_dir / f"result_{image_path.stem}.jpg"
         cv2.imwrite(str(output_path), annotated_img)
         
@@ -111,14 +180,19 @@ def test_custom_images(image_paths=None, confidence_threshold=0.25):
         }
         
         if detections > 0:
-            # Extract class names and confidences
-            classes = result.boxes.cls.cpu().numpy()
-            confidences = result.boxes.conf.cpu().numpy()
-            
+            # classes and confidences were already extracted above when drawing
+            # Extract class names for the summary printout
+            try:
+                classes = result.boxes.cls.cpu().numpy().astype(int)
+                confidences = result.boxes.conf.cpu().numpy()
+            except Exception:
+                classes = []
+                confidences = []
+
             class_names = [model.names[int(c)] for c in classes]
             detection_info['classes'] = class_names
             detection_info['confidences'] = confidences
-            
+
             print(f"    ✓ Detected {detections} object(s)")
             for cls_name, conf in zip(class_names, confidences):
                 print(f"      - {cls_name}: {conf:.2%} confidence")
@@ -163,7 +237,14 @@ def test_custom_images(image_paths=None, confidence_threshold=0.25):
                 f.write(f"    No objects detected\n")
             
             f.write(f"  Output: {result['output_path'].name}\n\n")
-        
+        # Write legend mapping (single-key -> class name) if any
+        if session_label_map:
+            f.write("\n" + "-" * 80 + "\n")
+            f.write("LEGEND (single-key labels used in images)\n")
+            f.write("-" * 80 + "\n")
+            for key, cls_name in sorted(session_label_map.items()):
+                f.write(f"  {key} -> {cls_name}\n")
+            f.write("\n")
         f.write("=" * 80 + "\n")
         f.write("END OF SUMMARY\n")
         f.write("=" * 80 + "\n")
@@ -173,6 +254,15 @@ def test_custom_images(image_paths=None, confidence_threshold=0.25):
     print("=" * 60)
     print(f"\nResults saved to: {session_dir}")
     print(f"Summary report: {report_path}")
+    # Write legend file separately
+    if session_label_map:
+        legend_path = session_dir / "legend.txt"
+        with open(legend_path, 'w') as lf:
+            lf.write("LEGEND (single-key labels used in images)\n")
+            lf.write("=" * 60 + "\n")
+            for key, cls_name in sorted(session_label_map.items()):
+                lf.write(f"{key} -> {cls_name}\n")
+        print(f"Legend file: {legend_path}")
     print(f"\nTotal detections: {total_detections} objects in {len(test_images)} images")
     print(f"Success rate: {images_with_detections}/{len(test_images)} images with detections")
     
